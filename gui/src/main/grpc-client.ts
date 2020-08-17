@@ -45,6 +45,7 @@ import {
   RelaySettings,
   RelayLocation,
   ProxySettings,
+  VoucherResponse,
   TunnelProtocol,
 } from '../shared/daemon-rpc-types';
 import * as managementInterface from './management_interface/management_interface_grpc_pb';
@@ -76,6 +77,7 @@ import {
   PublicKey,
   Settings,
 } from './management_interface/management_interface_pb';
+import { CommunicationError, InvalidAccountError } from './errors';
 import consumePromise from '../shared/promise';
 import * as grpcTypes from './management_interface/management_interface_pb';
 
@@ -341,9 +343,24 @@ export class GrpcClient {
   }
 
   public async getAccountData(accountToken: AccountToken): Promise<IAccountData> {
-    const response = await this.callString<AccountData>(this.client?.getAccountData, accountToken);
-    const expiry = response.getExpiry()!.toDate().toISOString();
-    return { expiry };
+    try {
+      const response = await this.callString<AccountData>(
+        this.client?.getAccountData,
+        accountToken,
+      );
+      const expiry = response.getExpiry()!.toDate().toISOString();
+      return { expiry };
+    } catch (error) {
+      if (error.code) {
+        switch (error.code) {
+          case grpc.status.UNAUTHENTICATED:
+            throw new InvalidAccountError();
+          default:
+            throw new CommunicationError();
+        }
+      }
+      throw error;
+    }
   }
 
   public async getWwwAuthToken(): Promise<string> {
@@ -351,17 +368,39 @@ export class GrpcClient {
     return response.getValue();
   }
 
-  public async submitVoucher(
-    voucherCode: string,
-  ): Promise<{ secondsAdded: number; newExpiry?: string }> {
-    const response = await this.callString<VoucherSubmission>(
-      this.client?.submitVoucher,
-      voucherCode,
-    );
-    return {
-      secondsAdded: response.getSecondsAdded(),
-      newExpiry: response.getNewExpiry()?.toDate().toISOString(),
-    };
+  public async submitVoucher(voucherCode: string): Promise<VoucherResponse> {
+    try {
+      const response = await this.callString<VoucherSubmission>(
+        this.client?.submitVoucher,
+        voucherCode,
+      );
+
+      const secondsAdded = ensureExists(
+        response.getSecondsAdded(),
+        "no 'secondsAdded' field in voucher response",
+      );
+      const newExpiry = ensureExists(
+        response.getNewExpiry(),
+        "no 'newExpiry' field in voucher response",
+      )
+        .toDate()
+        .toISOString();
+      return {
+        type: 'success',
+        secondsAdded,
+        newExpiry,
+      };
+    } catch (error) {
+      if (error.code) {
+        switch (error.code) {
+          case grpc.status.NOT_FOUND:
+            return { type: 'invalid' };
+          case grpc.status.RESOURCE_EXHAUSTED:
+            return { type: 'already_used' };
+        }
+      }
+      return { type: 'error' };
+    }
   }
 
   public getRelayLocations(): Promise<IRelayListCountry[]> {
@@ -1190,4 +1229,11 @@ function liftConstraint<T>(constraint: Constraint<T> | undefined): T | undefined
     return constraint.only;
   }
   return undefined;
+}
+
+function ensureExists<T>(value: T | undefined, errorMessage: string): T {
+  if (value) {
+    return value;
+  }
+  throw new Error(errorMessage);
 }

@@ -333,7 +333,7 @@ export interface ISocketAddress {
 }
 
 export type VoucherResponse =
-  | { type: 'success'; new_expiry: string }
+  | { type: 'success'; newExpiry: string; secondsAdded: number }
   | { type: 'invalid' | 'already_used' | 'error' };
 
 export enum VoucherErrorCode {

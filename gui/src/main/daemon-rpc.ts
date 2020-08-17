@@ -12,7 +12,6 @@ import {
   KeygenEvent,
   RelaySettingsUpdate,
   TunnelState,
-  VoucherErrorCode,
   VoucherResponse,
 } from '../shared/daemon-rpc-types';
 
@@ -30,9 +29,6 @@ export class ResponseParseError extends Error {
     return this.validationErrorValue;
   }
 }
-
-// Timeout used for RPC calls that do networking
-// const NETWORK_CALL_TIMEOUT = 10000;
 
 export class DaemonRpc {
   constructor(connectionParams: string) {
@@ -58,21 +54,8 @@ export class DaemonRpc {
   }
 
   public async getAccountData(accountToken: AccountToken): Promise<IAccountData> {
-    try {
-      return await this.transport.getAccountData(accountToken);
-    } catch (error) {
-      if (error.code) {
-        switch (error.code) {
-          case -200: // Account doesn't exist
-            throw new InvalidAccountError();
-          default:
-          case -32603: // Internal error
-            throw new CommunicationError();
-        }
-      } else {
-        throw error;
-      }
-    }
+    this.transport.getAccountData(accountToken);
+
   }
 
   public async getWwwAuthToken(): Promise<string> {
@@ -80,24 +63,7 @@ export class DaemonRpc {
   }
 
   public async submitVoucher(voucherCode: string): Promise<VoucherResponse> {
-    try {
-      const response = await this.transport.submitVoucher(voucherCode);
-
-      if (response.newExpiry) {
-        return { type: 'success', new_expiry: response.newExpiry };
-      }
-    } catch (error) {
-      if (error.code) {
-        switch (error.code) {
-          case VoucherErrorCode.Invalid:
-            return { type: 'invalid' };
-          case VoucherErrorCode.AlreadyUsed:
-            return { type: 'already_used' };
-        }
-      }
-    }
-
-    return { type: 'error' };
+    return this.transport.submitVoucher(voucherCode);
   }
 
   public async getRelayLocations(): Promise<IRelayList> {
