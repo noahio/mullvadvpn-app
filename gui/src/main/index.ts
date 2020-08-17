@@ -44,12 +44,7 @@ import consumePromise from '../shared/promise';
 import { Scheduler } from '../shared/scheduler';
 import AccountDataCache from './account-data-cache';
 import { getOpenAtLogin, setOpenAtLogin } from './autostart';
-import {
-  ConnectionObserver,
-  DaemonRpc,
-  ResponseParseError,
-  SubscriptionListener,
-} from './daemon-rpc';
+import { ConnectionObserver, DaemonRpc, SubscriptionListener } from './daemon-rpc';
 import { InvalidAccountError } from './errors';
 import Expectation from './expectation';
 import GuiSettings from './gui-settings';
@@ -572,10 +567,7 @@ class ApplicationMain {
       },
       (error: Error) => {
         log.error(`Cannot deserialize the daemon event: ${error.message}`);
-
-        if (error instanceof ResponseParseError && error.validationError) {
-          log.error(error.validationError.message);
-        }
+        log.error(error.stack);
       },
     );
 
