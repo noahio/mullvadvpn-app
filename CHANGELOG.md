@@ -45,6 +45,7 @@ Line wrap the file at 100 chars.                                              Th
 - Display the original block reason in the non-blocking error state, and why applying the blocking
   policy failed.
 - Don't show account time expired notification for newly created accounts.
+- Show a warning in the CLI if the provided location constraints don't match any known relay.
 
 #### Android
 - Show a system notification when the account time will soon run out.
