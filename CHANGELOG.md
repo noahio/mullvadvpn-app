@@ -29,6 +29,7 @@ Line wrap the file at 100 chars.                                              Th
 - Reconnect with a new key when WireGuard key is rotated automatically, previously the tunnel would
   time out before reconnecting.
 - Add split tunneling menu under advanced settings in Linux app.
+- Add CLI command to set the location constraint via `mullvad relay set relay HOSTNAME`.
 
 #### Android
 - Add split-tunnelling, allowing apps to be configured to be excluded from the tunnel.
